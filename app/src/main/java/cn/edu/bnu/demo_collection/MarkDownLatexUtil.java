@@ -110,7 +110,9 @@ public class MarkDownLatexUtil {
                     builder.theme().inlinePadding(JLatexMathTheme.Padding.symmetric(8, 8));
                     builder.theme().blockHorizontalAlignment(JLatexMathDrawable.ALIGN_LEFT);
                     builder.theme().textColor(Color.BLACK);
-                    builder.errorHandler((latex, error) -> {
+                    builder.errorHandler((latex, error) -> {// 保存错误latex
+                        LatexPreferenceUtil preferenceUtil = new LatexPreferenceUtil(context);
+                        preferenceUtil.saveErrorLatex(latex);
                         Log.e(TAG, "Error rendering LaTeX: " + error.getMessage());
                         if (listener != null) {
                             listener.onLatexError(latex);

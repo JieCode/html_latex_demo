@@ -13,10 +13,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.zanvent.mathview.MathView;
-
-import java.net.URLEncoder;
 import java.util.List;
+import java.util.Set;
 
 public class HtmlLatexAdapter extends RecyclerView.Adapter<HtmlLatexAdapter.ViewHolder> {
     private final Context context;
@@ -37,48 +35,78 @@ public class HtmlLatexAdapter extends RecyclerView.Adapter<HtmlLatexAdapter.View
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         String html = dataList.get(position);
-        // 用Markwon渲染内容
-        MarkDownLatexUtil util = new MarkDownLatexUtil(context, new MarkDownLatexUtil.MarkwonLatexListener() {
-            @Override
-            public void onImageClick(String imageUrl) {
-                Toast.makeText(context, "点击图片：" + imageUrl, Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onLatexError(String errorLatex) {
-                holder.textView.setVisibility(View.GONE);
-
-                Log.e("HtmlLatexAdapter", "Latex error: " + errorLatex);
-
-                holder.flWebView.setVisibility(View.VISIBLE);
-                // 延迟创建 WebView
-                holder.flWebView.post(() -> {
-                    // 检查是否已有 WebView
-                    holder.flWebView.removeAllViews();
-                    try {
-                        WebView webview = new WebView(context);
-                        // 判断errorLatex是否包含<latex>标签
-                        final String finalErrorLatex;
-                        if (!errorLatex.contains("<latex>")) {
-                            finalErrorLatex = "<latex>" + errorLatex + "</latex>";
-                        } else {
-                            finalErrorLatex = errorLatex;
-                        }
-                        WebViewLatexUtil util = new WebViewLatexUtil(context);
-                        util.renderContent(webview, html);
-                        holder.flWebView.addView(webview);
-                    } catch (Exception e) {
-                        Log.e("HtmlLatexAdapter", "WebView creation failed", e);
-                    }
-                });
-            }
-        });
-        holder.textView.setText(""); // 先清空，防止复用残影
-        util.renderContent(holder.textView, html);
-        holder.textView.requestLayout(); // 强制重新测量
-        holder.textView.invalidate();
         holder.textView.setVisibility(View.VISIBLE);
         holder.flWebView.setVisibility(View.GONE);
+
+        LatexPreferenceUtil preferenceUtil = new LatexPreferenceUtil(context);
+        Set<String> errorLatexSet = preferenceUtil.getErrorLatexSet();
+
+        boolean containsLatexTag = html.contains("<latex>");
+        boolean containsInlineLatex = html.contains("\\(");
+
+        boolean needWebView = false;
+
+        if (containsLatexTag || containsInlineLatex) {
+            // 检查html中是否包含保存的错误latex公式
+            for (String errorLatex : errorLatexSet) {
+                if (html.contains(errorLatex)) {
+                    needWebView = true;
+                    break;
+                }
+            }
+        }
+
+        if (needWebView) {
+            Log.e("HtmlLatexAdapter", "Need WebView: " + html);
+            // 直接用WebView展示
+            webViewLatex(holder, html);
+        } else {
+            Log.e("HtmlLatexAdapter", "MarkDownLatexUtil: " + html);
+            // 用Markwon渲染内容
+            MarkDownLatexUtil util = new MarkDownLatexUtil(context, new MarkDownLatexUtil.MarkwonLatexListener() {
+                @Override
+                public void onImageClick(String imageUrl) {
+                    Toast.makeText(context, "点击图片：" + imageUrl, Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onLatexError(String errorLatex) {
+                    // 保存错误latex
+                    preferenceUtil.saveErrorLatex(errorLatex);
+                    webViewLatex(holder, html);
+                }
+            });
+            holder.textView.setText(""); // 先清空，防止复用残影
+            util.renderContent(holder.textView, html);
+            holder.textView.requestLayout(); // 强制重新测量
+            holder.textView.invalidate();
+        }
+    }
+
+    /**
+     * 使用 WebView 渲染 latex 公式
+     * @param holder
+     * @param html
+     */
+    private void webViewLatex(@NonNull ViewHolder holder, String html) {
+        holder.textView.setVisibility(View.GONE);
+        holder.flWebView.setVisibility(View.VISIBLE);
+        holder.flWebView.post(() -> {
+            holder.flWebView.removeAllViews();
+            try {
+                WebView webview = new WebView(context);
+                WebViewLatexUtil util = new WebViewLatexUtil(context, new WebViewLatexUtil.WebViewListener() {
+                    @Override
+                    public void onImageClick(String url) {
+                        Toast.makeText(context, "点击图片：" + url, Toast.LENGTH_SHORT).show();
+                    }
+                });
+                util.renderContent(webview, html);
+                holder.flWebView.addView(webview);
+            } catch (Exception e) {
+                Log.e("HtmlLatexAdapter", "WebView creation failed", e);
+            }
+        });
     }
 
     @Override

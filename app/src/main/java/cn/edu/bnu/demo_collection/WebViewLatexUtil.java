@@ -1,20 +1,12 @@
 package cn.edu.bnu.demo_collection;
 
 import android.content.Context;
-import android.os.Build;
 import android.util.Log;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.nodes.TextNode;
-import org.jsoup.parser.Parser;
 
 /**
  * @CreateDate: 2025/6/11
@@ -25,9 +17,11 @@ public class WebViewLatexUtil {
     private static final String TAG = "WebViewLatexUtil";
     private static volatile WebViewLatexUtil instance;
     private Context mContext;
+    private WebViewListener listener;
 
-    public WebViewLatexUtil(Context context) {
+    public WebViewLatexUtil(Context context, WebViewListener listener) {
         this.mContext = context;
+        this.listener = listener;
     }
 
     /**
@@ -70,6 +64,9 @@ public class WebViewLatexUtil {
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
 
+        // 注入JS接口
+        webView.addJavascriptInterface(new JsBridge(), "AndroidBridge");
+
         loadMathContent(webView, originalHtml);
     }
 
@@ -87,7 +84,7 @@ public class WebViewLatexUtil {
                 .append("            display: none;\n")
                 .append("        }\n")
                 .append("        body {\n")
-                .append("            font-size: 12px;\n")
+                .append("            font-size: 14px;\n")
                 .append("            line-height: 1.2;\n")
                 .append("            color: #333;\n")
                 .append("            margin: 0;\n")
@@ -99,20 +96,6 @@ public class WebViewLatexUtil {
                 .append("        #content {\n")
                 .append("            display: inline-block;\n")
                 .append("            width: auto;\n")
-                .append("        }\n")
-                .append("        .math-container {\n")
-                .append("            background-color: #fff;\n")
-                .append("            text-align: left;\n")
-                .append("            display: inline-block;\n")
-                .append("            width: auto;\n")
-                .append("            margin: 0;\n")
-                .append("            padding: 0;\n")
-                .append("        }\n")
-                .append("        img {\n")
-                .append("            max-width: 100%;\n")
-                .append("            height: auto;\n")
-                .append("            display: block;\n")
-                .append("            margin: 10px auto;\n")
                 .append("        }\n")
                 .append("        .math-container {\n")
                 .append("            background-color: #fff;\n")
@@ -130,7 +113,6 @@ public class WebViewLatexUtil {
                 .append("    </style>\n")
                 .append("    <script>\n")
                 .append("        function renderMath() {\n")
-                .append("            // 1. 替换<latex>标签为MathJax可识别的格式\n")
                 .append("            var latexElements = document.querySelectorAll('latex');\n")
                 .append("            latexElements.forEach(function(el) {\n")
                 .append("                var container = document.createElement('div');\n")
@@ -138,8 +120,15 @@ public class WebViewLatexUtil {
                 .append("                container.innerHTML = '\\\\[' + el.textContent + '\\\\]';\n")
                 .append("                el.parentNode.replaceChild(container, el);\n")
                 .append("            });\n")
-                .append("            \n")
-                .append("            // 2. 初始化MathJax渲染\n")
+                .append("\n")
+                .append("            var imgs = document.querySelectorAll('img');\n")
+                .append("            imgs.forEach(function(img) {\n")
+                .append("                img.style.cursor = 'pointer';\n")
+                .append("                img.onclick = function() {\n")
+                .append("                    AndroidBridge.onImageClick(img.src);\n")
+                .append("                };\n")
+                .append("            });\n")
+                .append("\n")
                 .append("            MathJax.Hub.Config({\n")
                 .append("                extensions: [\"tex2jax.js\", \"mhchem.js\"],\n")
                 .append("                jax: [\"input/TeX\", \"output/HTML-CSS\"],\n")
@@ -154,11 +143,10 @@ public class WebViewLatexUtil {
                 .append("                \"HTML-CSS\": { \n")
                 .append("                    availableFonts: [\"TeX\"],\n")
                 .append("                    scale: 100\n")
-                .append("                },")
-                .append("               messageStyle: \"none\" ")
+                .append("                },\n")
+                .append("               messageStyle: \"none\" \n")
                 .append("            });\n")
-                .append("            \n")
-                .append("            // 3. 执行渲染\n")
+                .append("\n")
                 .append("            MathJax.Hub.Queue([\"Typeset\", MathJax.Hub]);\n")
                 .append("        }\n")
                 .append("    </script>\n")
@@ -180,5 +168,18 @@ public class WebViewLatexUtil {
                 "UTF-8",
                 null
         );
+    }
+
+    private class JsBridge {
+        @JavascriptInterface
+        public void onImageClick(String url) {
+            if (listener != null) {
+                listener.onImageClick(url);
+            }
+        }
+    }
+
+    public interface WebViewListener {
+        void onImageClick(String url);
     }
 }
