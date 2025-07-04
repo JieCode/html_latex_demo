@@ -38,25 +38,7 @@ public class HtmlLatexAdapter extends RecyclerView.Adapter<HtmlLatexAdapter.View
         holder.textView.setVisibility(View.VISIBLE);
         holder.flWebView.setVisibility(View.GONE);
 
-        LatexPreferenceUtil preferenceUtil = new LatexPreferenceUtil(context);
-        Set<String> errorLatexSet = preferenceUtil.getErrorLatexSet();
-
-        boolean containsLatexTag = html.contains("<latex>");
-        boolean containsInlineLatex = html.contains("\\(");
-
-        boolean needWebView = false;
-
-        if (containsLatexTag || containsInlineLatex) {
-            // 检查html中是否包含保存的错误latex公式
-            for (String errorLatex : errorLatexSet) {
-                if (html.contains(errorLatex)) {
-                    needWebView = true;
-                    break;
-                }
-            }
-        }
-
-        if (needWebView) {
+        if (LatexPreferenceUtil.getInstance().needWebView(context, html)) {
             Log.e("HtmlLatexAdapter", "Need WebView: " + html);
             // 直接用WebView展示
             webViewLatex(holder, html);
@@ -72,7 +54,6 @@ public class HtmlLatexAdapter extends RecyclerView.Adapter<HtmlLatexAdapter.View
                 @Override
                 public void onLatexError(String errorLatex) {
                     // 保存错误latex
-                    preferenceUtil.saveErrorLatex(errorLatex);
                     webViewLatex(holder, html);
                 }
             });
@@ -85,6 +66,7 @@ public class HtmlLatexAdapter extends RecyclerView.Adapter<HtmlLatexAdapter.View
 
     /**
      * 使用 WebView 渲染 latex 公式
+     *
      * @param holder
      * @param html
      */

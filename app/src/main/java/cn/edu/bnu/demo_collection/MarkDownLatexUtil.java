@@ -111,8 +111,7 @@ public class MarkDownLatexUtil {
                     builder.theme().blockHorizontalAlignment(JLatexMathDrawable.ALIGN_LEFT);
                     builder.theme().textColor(Color.BLACK);
                     builder.errorHandler((latex, error) -> {// 保存错误latex
-                        LatexPreferenceUtil preferenceUtil = new LatexPreferenceUtil(context);
-                        preferenceUtil.saveErrorLatex(latex);
+                        LatexPreferenceUtil.getInstance().saveErrorLatex(context, latex);
                         Log.e(TAG, "Error rendering LaTeX: " + error.getMessage());
                         if (listener != null) {
                             listener.onLatexError(latex);
