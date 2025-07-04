@@ -8,5 +8,5 @@ import android.content.Context;
  * @desc:
  */
 public class BaseUrl {
-    public static final String BASE_URL = "http://172.18.136.23/";
+    public static final String BASE_URL = "http://your.address/";
 }

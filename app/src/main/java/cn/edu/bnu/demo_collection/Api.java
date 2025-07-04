@@ -15,6 +15,6 @@ public interface Api {
      * 好双师服务器暂停提示接口
      * @return
      */
-    @GET("hss-api/common/bulletins?platform=android")
+    @GET("mock_list")
     Call<List<String>> mockListLatex();
 }
